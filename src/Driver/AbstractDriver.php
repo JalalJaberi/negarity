@@ -51,6 +51,11 @@ abstract class AbstractDriver implements DriverInterface
     abstract public function extractData(Image $image): mixed;
 
     /**
+     * Draw a line on the given image resource.
+     */
+    abstract function drawLine(Image $image, int $x1, int $y1, int $x2, int $y2, string $color, int $thickness = 1): void;
+
+    /**
      * saveImage must be implemented by concrete drivers.
      */
     abstract public function saveImage(mixed $imageResource, string $path, string|FormatInterface $format): bool;

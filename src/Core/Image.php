@@ -93,6 +93,11 @@ class Image
         return $this->driverResource;
     }
 
+    public function setDriverResource(mixed $resource): void
+    {
+        $this->driverResource = $resource;
+    }
+
     public function getDriver(): ?DriverInterface
     {
         return $this->driver;

@@ -93,6 +93,15 @@ class ImagickDriver extends AbstractDriver
         return $image->getDriverResource()->getImageBlob();
     }
 
+    public function drawLine(Image $image, int $x1, int $y1, int $x2, int $y2, string $color, int $thickness = 1): void
+    {
+        $draw = new \ImagickDraw();
+        $draw->setStrokeColor(new \ImagickPixel($color));
+        $draw->setStrokeWidth($thickness);
+        $draw->line($x1, $y1, $x2, $y2);
+        $image->getDriverResource()->drawImage($draw);
+    }
+
     /**
      * Saves the given image resource to the specified path in the given format.
      */

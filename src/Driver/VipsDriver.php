@@ -78,6 +78,54 @@ class VipsDriver extends AbstractDriver
         return $buffer;
     }
 
+    private function parseHexColor(string $hex): array
+    {
+        $hex = ltrim($hex, '#');
+        if (strlen($hex) === 3) {
+            $hex = $hex[0].$hex[0].$hex[1].$hex[1].$hex[2].$hex[2];
+        }
+        $r = hexdec(substr($hex, 0, 2));
+        $g = hexdec(substr($hex, 2, 2));
+        $b = hexdec(substr($hex, 4, 2));
+        return [$r, $g, $b, 255];
+    }
+
+    /**
+     * Draw a line on a Vips-backed Image; supports thickness via SVG fallback.
+     */
+    public function drawLine(Image $image, int $x1, int $y1, int $x2, int $y2, string $color, int $thickness = 1): void
+    {
+        $vips = $image->getDriverResource();
+        [$r, $g, $b, $a] = $this->parseHexColor($color);
+
+        // Create a 4-band RGBA base (not 1-band!)
+        $lineImg = VipsImage::black($vips->width, $vips->height)
+            ->bandjoin_const([0, 0, 0])       // expand to 4 bands (RGBA)
+            ->copy(['interpretation' => 'srgb']);
+
+        // Draw the line (1px thick)
+        $lineImg = $lineImg->draw_line([$r, $g, $b, $a], $x1, $y1, $x2, $y2);
+
+        // For thicker lines, approximate by drawing parallel lines
+        if ($thickness > 1) {
+            $dx = $x2 - $x1;
+            $dy = $y2 - $y1;
+            $len = max(1.0, sqrt($dx*$dx + $dy*$dy));
+            $ux = -$dy / $len;
+            $uy =  $dx / $len;
+            $half = (int) floor(($thickness - 1) / 2);
+            for ($i = -$half; $i <= $half; $i++) {
+                $ox = (int) round($ux * $i);
+                $oy = (int) round($uy * $i);
+                $lineImg = $lineImg->draw_line([$r, $g, $b, $a], $x1 + $ox, $y1 + $oy, $x2 + $ox, $y2 + $oy);
+            }
+        }
+
+        // Composite line over the base image
+        $composited = $vips->composite2($lineImg, 'over');
+        $image->setDriverResource($composited);
+    }
+
     /**
      * Saves the given image resource to the specified path in the given format.
      */

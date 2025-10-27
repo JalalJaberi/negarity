@@ -109,6 +109,80 @@ class GdDriver extends AbstractDriver
         return ob_get_clean();
     }
 
+
+    /**
+     * Allocate a color for a GD image resource from a hex string.
+     *
+     * Supports:
+     *  - '#RRGGBB'
+     *  - '#RRGGBBAA' where AA is alpha in hex (00 = opaque, FF = fully transparent)
+     *
+     * Returns the GD color index (int) for use with drawing functions.
+     *
+     * @param resource|\GdImage $resource
+     * @param string $hex
+     * @return int
+     */
+    private function allocateColor($resource, string $hex): int
+    {
+        $hex = trim($hex);
+
+        // Support short forms like '#fff' or '#ffff' if you want — currently expect full hex
+        if (strpos($hex, '#') === 0) {
+            $hex = substr($hex, 1);
+        }
+
+        // Normalize length
+        if (strlen($hex) === 3) { // 'rgb' -> 'rrggbb'
+            $hex = $hex[0].$hex[0].$hex[1].$hex[1].$hex[2].$hex[2];
+        } elseif (strlen($hex) === 4) { // 'rgba' -> 'rrggbbaa'
+            $hex = $hex[0].$hex[0].$hex[1].$hex[1].$hex[2].$hex[2].$hex[3].$hex[3];
+        }
+
+        if (strlen($hex) !== 6 && strlen($hex) !== 8) {
+            throw new \InvalidArgumentException("Color must be in '#RRGGBB' or '#RRGGBBAA' format. Given: {$hex}");
+        }
+
+        $r = hexdec(substr($hex, 0, 2));
+        $g = hexdec(substr($hex, 2, 2));
+        $b = hexdec(substr($hex, 4, 2));
+
+        if (strlen($hex) === 8) {
+            // alpha in hex: 00 (opaque) .. FF (transparent)
+            $aHex = substr($hex, 6, 2);
+            $alphaFraction = hexdec($aHex) / 255; // 0..1 (0 opaque)
+            // GD uses 0 (opaque) .. 127 (transparent)
+            $gdAlpha = (int) round(127 * $alphaFraction);
+            return imagecolorallocatealpha($resource, $r, $g, $b, $gdAlpha);
+        }
+
+        // No alpha
+        return imagecolorallocate($resource, $r, $g, $b);
+    }
+
+    public function drawLine(Image $image, int $x1, int $y1, int $x2, int $y2, string $color, int $thickness = 1): void
+    {
+        $resource = $image->getDriverResource();
+
+        if ($resource === null) {
+            throw new \RuntimeException('GD resource is not available on the Image.');
+        }
+
+        // Ensure thickness is at least 1
+        $thickness = max(1, (int) $thickness);
+
+        // Save previous thickness if available (imagesetthickness returns void, so track via ini not possible)
+        imagesetthickness($resource, $thickness);
+
+        $colIndex = $this->allocateColor($resource, $color);
+
+        imageline($resource, $x1, $y1, $x2, $y2, $colIndex);
+
+        // Reset thickness back to 1 to avoid surprising callers
+        imagesetthickness($resource, 1);
+        $image->setDriverResource($resource);
+    }
+
     /**
      * Saves the image resource to the specified path in the given format.
      */

@@ -52,6 +52,19 @@ interface DriverInterface
      */
     public function extractData(Image $image): mixed;
 
+    /* *
+     * Draw a line on the given image resource.
+     *
+     * @param Image $image The image to draw on.
+     * @param int $x1     Starting x-coordinate.
+     * @param int $y1     Starting y-coordinate.
+     * @param int $x2     Ending x-coordinate.
+     * @param int $y2     Ending y-coordinate.
+     * @param string $color   Color of the line (e.g., "#ff0000").
+     * @param int $thickness Thickness of the line in pixels.
+     */
+    public function drawLine(Image $image, int $x1, int $y1, int $x2, int $y2, string $color, int $thickness = 1): void;
+
     /**
      * Save the given image resource to a path in a specific format.
      *
